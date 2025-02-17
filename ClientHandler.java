@@ -31,6 +31,12 @@ public class ClientHandler implements Runnable {
             while ((message = in.readLine()) != null) {
                 if (message.equalsIgnoreCase("/exit")) {
                     break;
+                } else if (message.startsWith("/name ")) {
+                    changeName(message.substring(6));
+                } else if (message.equals("/list")) {
+                    listUsers();
+                } else if (message.startsWith("/whisper ")) {
+                    privateMessage(message);
                 } else {
                     broadcast(clientName + ": " + message, clientName);
                 }
@@ -53,6 +59,40 @@ public class ClientHandler implements Runnable {
             if (!entry.getKey().equals(excludeUser)) {
                 entry.getValue().println(message);
             }
+        }
+    }
+
+    private void changeName(String newName) {
+        if (newName.contains(" ") || ChatServer.clients.containsKey(newName)) {
+            out.println("Ошибка: Некорректное или уже занятое имя.");
+            return;
+        }
+        String oldName = clientName;
+        ChatServer.clients.remove(oldName);
+        clientName = newName;
+        ChatServer.clients.put(clientName, out);
+        out.println("Вы теперь известны как " + newName);
+        broadcast("Пользователь " + oldName + " теперь известен как " + newName);
+    }
+
+    private void listUsers() {
+        out.println("Подключенные пользователи: " + String.join(", ", ChatServer.clients.keySet()));
+    }
+
+    private void privateMessage(String message) {
+        String[] parts = message.split(" ", 3);
+        if (parts.length < 3) {
+            out.println("Использование: /whisper имя_пользователя сообщение");
+            return;
+        }
+        String targetUser = parts[1];
+        String msg = parts[2];
+        PrintWriter targetOut = ChatServer.clients.get(targetUser);
+        if (targetOut != null) {
+            targetOut.println("[Личное от " + clientName + "]: " + msg);
+            out.println("[Личное для " + targetUser + "]: " + msg);
+        } else {
+            out.println("Пользователь " + targetUser + " не найден.");
         }
     }
 
